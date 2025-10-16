@@ -1,20 +1,5 @@
 import 'package:flutter/material.dart';
-
-class CartItem {
-  final String id;
-  final String name;
-  final double price;
-  int quantity;
-  final double discount; // Discount percentage (0.0 to 1.0)
-
-  CartItem({
-    required this.id,
-    required this.name,
-    required this.price,
-    this.quantity = 1,
-    this.discount = 0.0,
-  });
-}
+import '../helpers/cart_calculator.dart';
 
 class ShoppingCart extends StatefulWidget {
   const ShoppingCart({super.key});
@@ -26,62 +11,39 @@ class ShoppingCart extends StatefulWidget {
 class _ShoppingCartState extends State<ShoppingCart> {
   final List<CartItem> _items = [];
 
-  void addItem(String id, String name, double price, {double discount = 0.0}) {
-    setState(() {
-      _items.add(
-        CartItem(id: id, name: name, price: price, discount: discount),
-      );
-    });
-  }
+void addItem(String id, String name, double price, {double discount = 0.0}) {
+  setState(() {
+    CartCalculator.addItem(_items, id, name, price, discount: discount);
+  });
+
+  print('clicked');
+}
 
   void removeItem(String id) {
     setState(() {
-      _items.removeWhere((item) => item.id == id);
+      CartCalculator.removeItem(_items, id);
     });
   }
 
   void updateQuantity(String id, int newQuantity) {
     setState(() {
-      final index = _items.indexWhere((item) => item.id == id);
-      if (index != -1) {
-        if (newQuantity <= 0) {
-          _items.removeAt(index);
-        } else {
-          _items[index].quantity = newQuantity;
-        }
-      }
+      CartCalculator.updateQuantity(_items, id, newQuantity);
     });
   }
 
   void clearCart() {
     setState(() {
-      _items.clear();
+      CartCalculator.clearCart(_items);
     });
   }
 
-  double get subtotal {
-    double total = 0;
-    for (var item in _items) {
-      total += item.price * item.quantity;
-    }
-    return total;
-  }
+  double get subtotal => CartCalculator.calculateSubtotal(_items);
 
-  double get totalDiscount {
-    double discount = 0;
-    for (var item in _items) {
-      discount += item.discount * item.quantity;
-    }
-    return discount;
-  }
+  double get totalDiscount => CartCalculator.calculateTotalDiscount(_items);
 
-  double get totalAmount {
-    return subtotal + totalDiscount;
-  }
+  double get totalAmount => CartCalculator.calculateTotalAmount(_items);
 
-  int get totalItems {
-    return _items.fold(0, (sum, item) => sum + item.quantity);
-  }
+  int get totalItems => CartCalculator.calculateTotalItems(_items);
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +53,7 @@ class _ShoppingCartState extends State<ShoppingCart> {
           spacing: 8,
           children: [
             ElevatedButton(
+              key: Key('iphone_key'),
               onPressed: () =>
                   addItem('1', 'Apple iPhone', 999.99, discount: 0.1),
               child: const Text('Add iPhone'),
