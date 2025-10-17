@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../helpers/temperature_helper.dart';
+import '../services/weather_api_service.dart';
 
 class WeatherDisplay extends StatefulWidget {
   const WeatherDisplay({super.key});
@@ -10,59 +12,32 @@ class WeatherDisplay extends StatefulWidget {
 class _WeatherDisplayState extends State<WeatherDisplay> {
   WeatherData? _weatherData;
   bool _isLoading = false;
-  String? _error;
   bool _useFahrenheit = false;
   String _selectedCity = 'New York';
-
+  Map<String, dynamic> error = {};
   final List<String> _cities = ['New York', 'London', 'Tokyo', 'Invalid City'];
-
-  double celsiusToFahrenheit(double celsius) {
-    return celsius * 9 / 5;
-  }
-
-  double fahrenheitToCelsius(double fahrenheit) {
-    return fahrenheit - 32 * 5 / 9;
-  }
-
-  // Simulate API call that sometimes returns null or malformed data
-  Future<Map<String, dynamic>?> _fetchWeatherData(String city) async {
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (city == 'Invalid City') {
-      return null;
-    }
-
-    
-    if (DateTime.now().millisecond % 4 == 0) {
-      return {'city': city, 'temperature': 22.5}; 
-    }
-
-    return {
-      'city': city,
-      'temperature': city == 'London' ? 15.0 : (city == 'Tokyo' ? 25.0 : 22.5),
-      'description': city == 'London'
-          ? 'Rainy'
-          : (city == 'Tokyo' ? 'Cloudy' : 'Sunny'),
-      'humidity': city == 'London' ? 85 : (city == 'Tokyo' ? 70 : 65),
-      'windSpeed': city == 'London' ? 8.5 : (city == 'Tokyo' ? 5.2 : 12.3),
-      'icon': city == 'London' ? '🌧️' : (city == 'Tokyo' ? '☁️' : '☀️'),
-    };
-  }
 
   Future<void> _loadWeather() async {
     if (mounted) {
       setState(() {
         _isLoading = true;
-        _error = null;
       });
     }
 
-    
-    final data = await _fetchWeatherData(_selectedCity);
-    setState(() {
-      _weatherData = WeatherData.fromJson(data); 
-      _isLoading = false;
-    });
+    final data = await WeatherApiService.fetchWeatherData(_selectedCity);
+
+    if (data!.containsKey("error")) {
+      setState(() {
+        _weatherData = null;
+        _isLoading = false;
+        error = data;
+      });
+    } else {
+      setState(() {
+        _weatherData = WeatherData.fromJson(data);
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -127,9 +102,8 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
           ),
           const SizedBox(height: 16),
 
-          if (_isLoading && _error == null)
+          if (_isLoading)
             const Center(child: CircularProgressIndicator())
-          
           else if (_weatherData != null)
             Card(
               elevation: 4,
@@ -172,7 +146,7 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
                     Center(
                       child: Text(
                         _useFahrenheit
-                            ? '${celsiusToFahrenheit(_weatherData!.temperatureCelsius).toStringAsFixed(1)}°F'
+                            ? '${TemperatureHelper.celsiusToFahrenheit(_weatherData!.temperatureCelsius).toStringAsFixed(1)}°F'
                             : '${_weatherData!.temperatureCelsius.toStringAsFixed(1)}°C',
                         style: const TextStyle(
                           fontSize: 48,
@@ -200,7 +174,8 @@ class _WeatherDisplayState extends State<WeatherDisplay> {
                 ),
               ),
             )
-          
+          else if (_weatherData == null)
+            Center(child: Text('Error: ${error.entries.first.value}')),
         ],
       ),
     );
@@ -238,15 +213,14 @@ class WeatherData {
     required this.icon,
   });
 
-  
   factory WeatherData.fromJson(Map<String, dynamic>? json) {
     return WeatherData(
       city: json!['city'],
       temperatureCelsius: json['temperature'].toDouble(),
-      description: json['description'],
-      humidity: json['humidity'], 
-      windSpeed: json['windSpeed'].toDouble(), 
-      icon: json['icon'], 
+      description: json['description'] ?? '',
+      humidity: json['humidity'],
+      windSpeed: json['windSpeed'].toDouble(),
+      icon: json['icon'],
     );
   }
 }
