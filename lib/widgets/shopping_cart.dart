@@ -26,14 +26,21 @@ class ShoppingCart extends StatefulWidget {
 class _ShoppingCartState extends State<ShoppingCart> {
   final List<CartItem> _items = [];
 
-  void addItem(String id, String name, double price, {double discount = 0.0}) {
-    setState(() {
+void addItem(String id, String name, double price, {double discount = 0.0}) {
+  final existingIndex = _items.indexWhere((item) => item.id == id);
+  
+  setState(() {
+    if (existingIndex >= 0) {
+      _items[existingIndex].quantity++;
+    } else {
       _items.add(
         CartItem(id: id, name: name, price: price, discount: discount),
       );
-    });
-  }
-
+    }
+  });
+  
+  print('clicked');
+}
   void removeItem(String id) {
     setState(() {
       _items.removeWhere((item) => item.id == id);
@@ -70,13 +77,13 @@ class _ShoppingCartState extends State<ShoppingCart> {
   double get totalDiscount {
     double discount = 0;
     for (var item in _items) {
-      discount += item.discount * item.quantity;
+      discount += (item.discount * item.price) * item.quantity;
     }
     return discount;
   }
 
   double get totalAmount {
-    return subtotal + totalDiscount;
+    return subtotal - totalDiscount;
   }
 
   int get totalItems {
